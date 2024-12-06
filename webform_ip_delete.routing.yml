@@ -1,0 +1,7 @@
+webform_ip_delete.form:
+  path: '/admin/structure/webform/webform_ip_delete'
+  defaults:
+    _form: '\Drupal\webform_ip_delete\Form\WebformIpDeleteForm'
+    _title: 'Webforms IP delete form'
+  requirements:
+    _permission: 'administer webform'

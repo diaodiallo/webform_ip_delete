@@ -1,0 +1,5 @@
+webform_ip_delete.form:
+  title: 'Webform IP delete form'
+  description: 'Delete collected IP addresses.'
+  parent: entity.webform.collection
+  route_name: webform_ip_delete.form
