@@ -25,7 +25,10 @@ class WebformIpDeleteForm extends FormBase {
     $form['container'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Webforms'),
-      '#description' => $this->t('Webforms with collected IP addresses'),
+    ];
+
+    $form['container']['introduction'] = [
+      '#markup' => $this->t('<p>Helps delete collected IP addresses. When you delete IPs for a form the module will also disable the tracking of user IP address</p>'),
     ];
 
     $form['container']['table'] = [
@@ -33,7 +36,7 @@ class WebformIpDeleteForm extends FormBase {
       '#header' => [
         $this->t('ID'),
         $this->t('Title'),
-        $this->t('Number of submissions'),
+        $this->t('Number of collected IPs'),
         $this->t('Action'),
       ],
     ];
@@ -100,20 +103,23 @@ class WebformIpDeleteForm extends FormBase {
     $row_index = $triggering_element['#attributes']['data-row-index'];
 
     $webforms = $form_state->get('table') ?? [];
-    // todo update webform settings to desable ip.
     if (isset($webforms[$row_index])) {
-      $updated = $this->update_submission_ips($webforms[$row_index]['id']);
-      $webform_title = $webforms[$row_index]['title'];
-      unset($webforms[$row_index]);
-      $webforms = array_values($webforms);
-      $form_state->set('table', $webforms);
+      $webform_id = $webforms[$row_index]['id'];
+      $updated = $this->update_submission_ips($webform_id);
+      if ($updated > 0) {
+        unset($webforms[$row_index]);
+        $webforms = array_values($webforms);
+        $form_state->set('table', $webforms);
 
-      \Drupal::messenger()
-        ->addMessage($this->t('@number IP addresses are delated from "@$webform_title" submissions.', [
-          '@number' => $updated,
-          '@$webform_title' => $webform_title,
-        ]));
-      $form_state->setRebuild();
+        \Drupal::messenger()
+          ->addMessage($this->t('@number IP addresses are delated from "@$webform_title" submissions.', [
+            '@number' => $updated,
+            '@$webform_title' => $webforms[$row_index]['title'],
+          ]));
+        $form_state->setRebuild();
+
+        $this->disable_the_tracking_of_user_ip_address($webform_id);
+      }
     }
   }
 
@@ -153,6 +159,22 @@ class WebformIpDeleteForm extends FormBase {
     }
 
     return $updated;
+  }
+
+  private function disable_the_tracking_of_user_ip_address(string $webform_id) {
+
+    $webform = \Drupal::entityTypeManager()
+      ->getStorage('webform')
+      ->load($webform_id);
+
+    if ($webform) {
+      $settings = $webform->getSettings();
+      if (!$settings['form_disable_remote_addr']) {
+        $settings['form_disable_remote_addr'] = TRUE;
+        $webform->setSettings($settings);
+        $webform->save();
+      }
+    }
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state) {
