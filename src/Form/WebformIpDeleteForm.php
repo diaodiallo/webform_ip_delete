@@ -17,7 +17,7 @@ class WebformIpDeleteForm extends FormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
 
     if (!$form_state->has('table')) {
-      $form_state->set('table', $this->get_webforms_with_ip_submissions());
+      $form_state->set('table', $this->getWebformsWithIpSubmissions());
     }
 
     $webforms = $form_state->get('table');
@@ -34,40 +34,44 @@ class WebformIpDeleteForm extends FormBase {
     $form['container']['table'] = [
       '#type' => 'table',
       '#header' => [
-        $this->t('ID'),
         $this->t('Title'),
         $this->t('Number of collected IPs'),
         $this->t('Action'),
       ],
     ];
 
-    foreach ($webforms as $index => $webform) {
-      $form['container']['table'][$index][$webform['id']] = [
-        '#markup' => $webform['id'],
-      ];
-
-      $form['container']['table'][$index][$webform['title']] = [
+    foreach ($webforms as $webform_id => $webform) {
+      $form['container']['table'][$webform_id][$webform['title']] = [
         '#markup' => $webform['title'],
       ];
 
-      $form['container']['table'][$index][$webform['number']] = [
+      $form['container']['table'][$webform_id][$webform['number']] = [
         '#markup' => $webform['number'],
       ];
 
-      $form['container']['table'][$index]['delete'] = [
+      $form['container']['table'][$webform_id]['delete'] = [
         '#type' => 'submit',
         '#value' => $this->t('Delete'),
-        '#name' => 'delete_row_' . $index,
-        '#submit' => ['::delete_row'],
+        '#name' => $webform_id,
+        '#submit' => ['::deleteRow'],
         '#limit_validation_errors' => [],
-        '#attributes' => ['data-row-index' => $index],
+        '#webform_id' => $webform_id,
       ];
     }
 
     return $form;
   }
 
-  private function get_webforms_with_ip_submissions(): array {
+  /**
+   * Retrieves a list of webforms with submissions containing IP addresses.
+   *
+   * @return array
+   *   An associative array where each key is a webform ID, and each value is a
+   *   sub-array containing:
+   *   - 'title': The title of the webform.
+   *   - 'number': The number of submissions with IP addresses.
+   */
+  private function getWebformsWithIpSubmissions(): array {
     $result = [];
 
     $webforms = Webform::loadMultiple();
@@ -87,8 +91,7 @@ class WebformIpDeleteForm extends FormBase {
       }
 
       if ($count > 0) {
-        $result[] = [
-          'id' => $webform_id,
+        $result[$webform_id] = [
           'title' => $webform->label(),
           'number' => $count,
         ];
@@ -98,32 +101,57 @@ class WebformIpDeleteForm extends FormBase {
     return $result;
   }
 
-  public function delete_row(array &$form, FormStateInterface $form_state) {
+  /**
+   * Removes a webform row in the table and updates the associated IP addresses.
+   *
+   * This method handles the deletion of a webform from the table stored in
+   * the form state. It also updates the IP addresses associated with the
+   * webform's submissions, disables user IP tracking for the webform,
+   * and displays a confirmation message to the user.
+   *
+   * @param array $form
+   *   The form structure.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form, including user input and metadata.
+   */
+  public function deleteRow(array &$form, FormStateInterface $form_state) {
     $triggering_element = $form_state->getTriggeringElement();
-    $row_index = $triggering_element['#attributes']['data-row-index'];
+    $webform_id = $triggering_element['#webform_id'];
 
     $webforms = $form_state->get('table') ?? [];
-    if (isset($webforms[$row_index])) {
-      $webform_id = $webforms[$row_index]['id'];
-      $updated = $this->update_submission_ips($webform_id);
+    if (isset($webforms[$webform_id])) {
+      $updated = $this->updateSubmissionIps($webform_id);
       if ($updated > 0) {
-        unset($webforms[$row_index]);
-        $webforms = array_values($webforms);
+        $title = $webforms[$webform_id]['title'];
+        unset($webforms[$webform_id]);
         $form_state->set('table', $webforms);
 
         \Drupal::messenger()
           ->addMessage($this->t('@number IP addresses are delated from "@$webform_title" submissions.', [
             '@number' => $updated,
-            '@$webform_title' => $webforms[$row_index]['title'],
+            '@$webform_title' => $title,
           ]));
         $form_state->setRebuild();
 
-        $this->disable_the_tracking_of_user_ip_address($webform_id);
+        $this->disableTheTrackingOfUserIpAddress($webform_id);
       }
     }
   }
 
-  private function update_submission_ips(string $webform_id) {
+  /**
+   * Removes IP addresses from submissions of a specific webform.
+   *
+   * This function processes submissions of the given webform in batches to
+   * avoid memory issues. It iterates through the submissions, checks for
+   * IP addresses, and clears the 'remote_addr' field if an IP is present.
+   *
+   * @param string $webform_id
+   *   The ID of the webform whose submissions will be processed.
+   *
+   * @return int
+   *   The number of submissions updated (IP addresses removed).
+   */
+  private function updateSubmissionIps(string $webform_id): int {
 
     // Query pagination to avoid memory issue.
     $batch_size = 100;
@@ -161,7 +189,16 @@ class WebformIpDeleteForm extends FormBase {
     return $updated;
   }
 
-  private function disable_the_tracking_of_user_ip_address(string $webform_id) {
+  /**
+   * Disables the tracking of user IP addresses for a specific webform.
+   *
+   * This function modifies the settings of the specified webform to disable
+   * the tracking of remote IP addresses, if it is not already disabled.
+   *
+   * @param string $webform_id
+   *   The ID of the webform for which IP address tracking will be disabled.
+   */
+  private function disableTheTrackingOfUserIpAddress(string $webform_id) {
 
     $webform = \Drupal::entityTypeManager()
       ->getStorage('webform')
