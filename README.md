@@ -4,6 +4,8 @@ This module helps delete collected IP addresses by the [Webform](https://www.dru
 When webform allow site administrators to disable this ip collection, sometime we miss enabling this functionnality 
 at the right time and removing these informations become necessary for our site.
 
+The module add an action plugins to remove collected IP address for each webform.
+
 
 For a full description of the module, visit the
 [project page](https://www.drupal.org/project/webform_ip_delete).
@@ -32,10 +34,12 @@ information, see
 
 ## Configuration
 
-The module has a configuration form in /admin/structure/webform/webform_ip_delete
-Webform admins can see all webforms with number of collected IP addresses and remove them if needed.
+To use this action plugin you need to activate "Delete collected IP addresses" action at 
+/admin/structure/webform/config/#edit-bulk-form-settings. Then this action plugin will be available at the bulk operations 
+dropdown under /admin/structure/webforms.
 
 ## Maintainers
 
 - Mamadou Diao Diallo - [diaodiallo](https://www.drupal.org/u/diaodiallo)
 - Daniel Cothran - [andileco](https://www.drupal.org/u/andileco)
+- Nia Kathoni - [nikathone](https://www.drupal.org/u/nikathone)

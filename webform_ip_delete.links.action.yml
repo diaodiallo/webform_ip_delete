@@ -1,0 +1,4 @@
+webform_ip_delete.delete_ip_action:
+  label: 'Delete collected IP addresses'
+  type: webform
+  provider: webform
