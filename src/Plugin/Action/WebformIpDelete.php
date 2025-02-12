@@ -74,15 +74,15 @@ class WebformIpDelete extends ActionBase implements ContainerFactoryPluginInterf
 
       if ($updated > 0) {
         \Drupal::messenger()
-          ->addMessage($this->t('@number IP addresses are delated from "@$webform_title" submissions.', [
+          ->addMessage($this->t('@number IP addresses are delated from "@webform_title" submissions.', [
             '@number' => $updated,
-            '@$webform_title' => $entity->label(),
+            '@webform_title' => $entity->label(),
           ]));
       }
       else {
         \Drupal::messenger()
-          ->addMessage($this->t('There are no collected IP addresses for "@$webform_title".', [
-            '@$webform_title' => $entity->label(),
+          ->addMessage($this->t('There are no collected IP addresses for "@webform_title".', [
+            '@webform_title' => $entity->label(),
           ]));
       }
 
